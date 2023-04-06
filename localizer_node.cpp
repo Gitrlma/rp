@@ -24,10 +24,10 @@ void callback_scan(const sensor_msgs::LaserScanConstPtr&);
 
 std::shared_ptr<Map> map_ptr = nullptr;
 ros::Publisher pub_scan, pub_odom;
-const std::string TOPIC_MAP = "map";
-const std::string TOPIC_INITIAL_POSE = "initialpose";
-const std::string TOPIC_BASE_SCAN = "base_scan";
-const std::string TOPIC_ODOM = "odom_out";
+const std::string TOPIC_MAP = "/map";
+const std::string TOPIC_INITIAL_POSE = "/initialpose";
+const std::string TOPIC_BASE_SCAN = "/base_scan";
+const std::string TOPIC_ODOM = "/odom_out";
 
 Eigen::Isometry2f laser_in_world = Eigen::Isometry2f::Identity();
 
@@ -46,7 +46,7 @@ int main(int argc, char** argv) {
   ROS_INFO("Node initialized.");
 
   // Create shared pointer for the Map object
-  // TODO make_shared
+  // TODO
   map_ptr = std::make_shared<Map> ();
   //
   /**
@@ -89,8 +89,8 @@ void callback_map(const nav_msgs::OccupancyGridConstPtr& msg_) {
   
   if(!map_ptr->initialized()){
   map_ptr->loadOccupancyGrid(msg_);
-  }
   localizer.setMap(map_ptr);
+  }
   
 }
 
@@ -152,7 +152,7 @@ void callback_scan(const sensor_msgs::LaserScanConstPtr& msg_) {
 
   br.sendTransform(tf_msg);
   
-  ROS_INFO("Into scan.");
+  //ROS_INFO("Into scan.");
 
   /**
    * Send a nav_msgs::Odometry message containing the current laser_in_world

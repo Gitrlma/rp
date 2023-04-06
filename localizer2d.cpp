@@ -7,9 +7,12 @@ Localizer2D::Localizer2D()
       _laser_in_world(Eigen::Isometry2f::Identity()),
       _obst_tree_ptr(nullptr) {}
       
-      
+
+//using ContainerType = std::vector<Vector3f, Eigen::aligned_allocator<Vector3f> >;
+//using TreeNodeType = TreeNode_<ContainerType::iterator>;
 std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Vector2f>> scan_fixed;
-   
+
+
 /**
  * @brief Set the internal map reference and constructs the KD-Tree containing
  * obstacles coordinates for fast access.
@@ -24,10 +27,29 @@ void Localizer2D::setMap(std::shared_ptr<Map> map_) {
    * coordinates of all cells representing obstacles.
    * Finally instantiate the KD-Tree (obst_tree_ptr) on the vector.
    */
-  // TODO
+  // TODO Is this not done already in the callback?
+  if(!_map->initialized()){
+  return;
+  }
+  
 
   // Create KD-Tree
   // TODO
+  for(int col=0; col<_map->cols(); col++){
+  
+  	for(int row=0; row<_map->rows(); row++){
+  	
+  		if ((*_map)(row,col)==100){
+  			//create Eigen::Vector2f with x and y to pass
+  			//vector 2f to run it
+  			auto point=cv::Point2i(row,col);
+  			_obst_vect.push_back(_map->grid2world(point)) ;
+  		}
+  	}
+  }
+  TreeType obst_kd_tree(_obst_vect.begin(), _obst_vect.end(), 10);
+  
+  _obst_tree_ptr=std::shared_ptr<TreeType> (&obst_kd_tree);
 }
 
 /**
@@ -37,7 +59,7 @@ void Localizer2D::setMap(std::shared_ptr<Map> map_) {
  */
 void Localizer2D::setInitialPose(const Eigen::Isometry2f& initial_pose_) {
   // TODO
-  
+  _laser_in_world = initial_pose_;
 }
 
 /**
@@ -49,6 +71,7 @@ void Localizer2D::setInitialPose(const Eigen::Isometry2f& initial_pose_) {
 void Localizer2D::process(const ContainerType& scan_) {
   // Use initial pose to get a synthetic scan to compare with scan_
   // TODO
+  
 
   /**
    * Align prediction and scan_ using ICP.
