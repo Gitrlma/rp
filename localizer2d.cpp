@@ -10,7 +10,6 @@ Localizer2D::Localizer2D()
 
 //using ContainerType = std::vector<Vector3f, Eigen::aligned_allocator<Vector3f> >;
 //using TreeNodeType = TreeNode_<ContainerType::iterator>;
-std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Vector2f>> scan_fixed;
 
 
 /**
@@ -49,7 +48,8 @@ void Localizer2D::setMap(std::shared_ptr<Map> map_) {
   }
   TreeType obst_kd_tree(_obst_vect.begin(), _obst_vect.end(), 10);
   
-  _obst_tree_ptr=std::shared_ptr<TreeType> (&obst_kd_tree);
+  //_obst_tree_ptr=std::make_shared<TreeType> (obst_kd_tree);
+  _obst_tree_ptr = std::make_shared<TreeType>(_obst_vect.begin(), _obst_vect.end(), 10);
 }
 
 /**
@@ -79,15 +79,11 @@ void Localizer2D::process(const ContainerType& scan_) {
    * solver X before running ICP)
    */
   // TODO
-  std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Vector2f>> scan;
   
-  if (scan_fixed.size() == 0) {
-    scan_fixed = scan;
-    //ROS_INFO("Storing scan as fixed.");
-    return;
-  }
+  ContainerType prediction;
+  getPrediction(prediction); //Call without equal?
   
-  ICP solver(scan_fixed, scan, 4);
+  ICP solver(prediction, scan_, 4);
   solver.run(100);
 
   /**
@@ -96,13 +92,12 @@ void Localizer2D::process(const ContainerType& scan_) {
    */
   // TODO
   
-  _laser_in_world = _laser_in_world * solver.X();
+  //_laser_in_world = _laser_in_world * solver.X();
+  _laser_in_world = solver.X();
   
   
   //ROS_INFO("Scan [points:%ld,chi:%f,pos=(%f, %f)]", scan.size(), solver.chi(),
   //         _laser_in_world.translation().x(), _laser_in_world.translation().y());
-           
-  scan_fixed = scan;
 }
 
 /**
@@ -145,4 +140,19 @@ void Localizer2D::getPrediction(ContainerType& prediction_) {
    * You may use additional sensor's informations to refine the prediction.
    */
   // TODO
+  TreeType::AnswerType neighbors;
+  //prediction_=_obst_tree_ptr->fullSearch(neighbors,&_laser_in_world, 10); //_range_max?10 picked randomly
+  
+  //Why X() that is the identity?(so is defined in eigen_icp_2d.h)
+  
+  std::cerr << "setted initial pose2"<< std::endl;
+  _obst_tree_ptr->fullSearch(neighbors,X().translation(), _range_max);
+  std::cerr << "setted initial pose3"<< std::endl;
+  
+  for(auto point:neighbors){
+  prediction_.push_back(*point);
+  }
+  //TODO CONTROL IF PREDICTION HAS POINTS
+  std::cerr << "point"<< std::endl;
+  
 }

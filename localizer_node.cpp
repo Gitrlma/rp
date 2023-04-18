@@ -24,19 +24,20 @@ void callback_scan(const sensor_msgs::LaserScanConstPtr&);
 
 std::shared_ptr<Map> map_ptr = nullptr;
 ros::Publisher pub_scan, pub_odom;
-const std::string TOPIC_MAP = "/map";
-const std::string TOPIC_INITIAL_POSE = "/initialpose";
-const std::string TOPIC_BASE_SCAN = "/base_scan";
-const std::string TOPIC_ODOM = "/odom_out";
 
 Eigen::Isometry2f laser_in_world = Eigen::Isometry2f::Identity();
+sensor_msgs::LaserScan::ConstPtr last_scan_msg;
 
 Localizer2D localizer;
 
 int main(int argc, char** argv) {
   // Initialize ROS system
   // TODO
-  printf("%s \n","test");
+  const std::string TOPIC_MAP = "/map";
+  const std::string TOPIC_INITIAL_POSE = "/initialpose";
+  const std::string TOPIC_BASE_SCAN = "/base_scan";
+  const std::string TOPIC_ODOM = "/odom_out";
+  //printf("%s \n","test");
   //echo "Hello";
   //echo "I am here";
   ros::init(argc, argv, "localizer_node");
@@ -44,10 +45,11 @@ int main(int argc, char** argv) {
   // The namespace of the node is set to global
   ros::NodeHandle nh("/");
   ROS_INFO("Node initialized.");
-
+  localizer=Localizer2D();
+  
   // Create shared pointer for the Map object
   // TODO
-  map_ptr = std::make_shared<Map> ();
+  map_ptr = std::make_shared<Map>();
   //
   /**
    * Subscribe to the topics:
@@ -61,11 +63,11 @@ int main(int argc, char** argv) {
    */
   // TODO
 
-  ros::Subscriber map_subscriber = nh.subscribe(TOPIC_MAP, 10, callback_map);
+  ros::Subscriber map_subscriber = nh.subscribe(TOPIC_MAP, 1000, callback_map);
   
-  ros::Subscriber initial_pose_subscriber = nh.subscribe(TOPIC_INITIAL_POSE, 10, callback_initialpose);
+  ros::Subscriber initial_pose_subscriber = nh.subscribe(TOPIC_INITIAL_POSE, 1000, callback_initialpose);
 
-  ros::Subscriber base_scan_subscriber = nh.subscribe(TOPIC_BASE_SCAN, 10, callback_scan);
+  ros::Subscriber base_scan_subscriber = nh.subscribe(TOPIC_BASE_SCAN, 1000, callback_scan);
   
   pub_odom = nh.advertise<nav_msgs::Odometry>(TOPIC_ODOM, 10);
 
@@ -89,7 +91,9 @@ void callback_map(const nav_msgs::OccupancyGridConstPtr& msg_) {
   
   if(!map_ptr->initialized()){
   map_ptr->loadOccupancyGrid(msg_);
+  std::cerr << "load done"<< std::endl;
   localizer.setMap(map_ptr);
+  std::cerr << "setted map"<< std::endl;
   }
   
 }
@@ -105,6 +109,8 @@ void callback_initialpose(const geometry_msgs::PoseWithCovarianceStampedConstPtr
    
    //Eigen::Isometry2f& _iso;
    
+   std::cerr << "initial pose received2"<< std::endl;
+   ROS_INFO("intial pose recived");
    pose2isometry(msg_->pose.pose, laser_in_world);
    
    localizer.setInitialPose(laser_in_world);
@@ -116,7 +122,15 @@ void callback_scan(const sensor_msgs::LaserScanConstPtr& msg_) {
    * [std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>>]
    */
   // TODO
+  
+  if(last_scan_msg == nullptr || last_scan_msg->ranges!= msg_->ranges){
+    ROS_INFO("I heard new: LaserScan_msg ");
+    last_scan_msg = msg_;
+  }
+  else return; 
+   ROS_INFO("callback back scan");
   //Localizer2D::ContainerType[std::vector<Eigen::Vector2f, Eigen::aligned_allocator<Eigen::Vector2f>>] loc2d;
+  
   std::vector<Eigen::Vector2f,Eigen::aligned_allocator<Eigen::Vector2f>> loc2d;
   scan2eigen(msg_, loc2d);
   /**
